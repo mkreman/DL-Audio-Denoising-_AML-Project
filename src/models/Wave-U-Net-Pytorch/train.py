@@ -20,6 +20,11 @@ from data.utils import crop_targets, random_amplify
 from test import evaluate, validate
 from model.waveunet import Waveunet
 
+from datasets import load_dataset
+os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
+os.environ['CUDA_DEVICE_ORDER'] = 'PCI_BUS_ID'
+os.environ['LD_LIBRARY_PATH'] = '/usr/local/cuda-11.8/lib64'
+
 def main(args):
     #torch.backends.cudnn.benchmark=True # This makes dilated conv much faster for CuDNN 7.5
 
@@ -42,14 +47,25 @@ def main(args):
     writer = SummaryWriter(args.log_dir)
 
     ### DATASET
-    musdb = get_musdb_folds(args.dataset_dir)
+    if args.dataset == "demand":
+        ds = load_dataset("JacobLinCool/VoiceBank-DEMAND-16k", use_auth_token=True, cache_dir=args.dataset_dir)
+        temp = ds['train'].train_test_split(test_size=0.1, seed=42)
+        dataset = {
+            "train": temp['train'],
+            "val": temp['test'],
+            "test": ds['test']
+        }
+        from data.demand_dataset import SeparationDataset
+    else:
+        dataset = get_musdb_folds(args.dataset_dir)
+
     # If not data augmentation, at least crop targets to fit model output shape
     crop_func = partial(crop_targets, shapes=model.shapes)
     # Data augmentation function for training
     augment_func = partial(random_amplify, shapes=model.shapes, min=0.7, max=1.0)
-    train_data = SeparationDataset(musdb, "train", args.instruments, args.sr, args.channels, model.shapes, True, args.hdf_dir, audio_transform=augment_func)
-    val_data = SeparationDataset(musdb, "val", args.instruments, args.sr, args.channels, model.shapes, False, args.hdf_dir, audio_transform=crop_func)
-    test_data = SeparationDataset(musdb, "test", args.instruments, args.sr, args.channels, model.shapes, False, args.hdf_dir, audio_transform=crop_func)
+    train_data = SeparationDataset(dataset, "train", args.instruments, args.sr, args.channels, model.shapes, True, args.hdf_dir, audio_transform=augment_func)
+    val_data = SeparationDataset(dataset, "val", args.instruments, args.sr, args.channels, model.shapes, False, args.hdf_dir, audio_transform=crop_func)
+    test_data = SeparationDataset(dataset, "test", args.instruments, args.sr, args.channels, model.shapes, False, args.hdf_dir, audio_transform=crop_func)
 
     dataloader = torch.utils.data.DataLoader(train_data, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers, worker_init_fn=utils.worker_init_fn)
 
@@ -151,7 +167,7 @@ def main(args):
     writer.add_scalar("test_loss", test_loss, state["step"])
 
     # Mir_eval metrics
-    test_metrics = evaluate(args, musdb["test"], model, args.instruments)
+    test_metrics = evaluate(args, dataset["test"], model, args.instruments)
 
     # Dump all metrics results into pickle file for later analysis if needed
     with open(os.path.join(args.checkpoint_dir, "results.pkl"), "wb") as f:
@@ -176,12 +192,14 @@ if __name__ == '__main__':
                         help="List of instruments to separate (default: \"bass drums other vocals\")")
     parser.add_argument('--cuda', action='store_true',
                         help='Use CUDA (default: False)')
-    parser.add_argument('--num_workers', type=int, default=1,
+    parser.add_argument('--num_workers', type=int, default=4,
                         help='Number of data loader worker threads (default: 1)')
     parser.add_argument('--features', type=int, default=32,
                         help='Number of feature channels per layer')
     parser.add_argument('--log_dir', type=str, default='logs/waveunet',
                         help='Folder to write logs into')
+    parser.add_argument('--dataset', type=str, default="demand",
+                        help='Dataset name (default: demand)')
     parser.add_argument('--dataset_dir', type=str, default="/mnt/windaten/Datasets/MUSDB18HQ",
                         help='Dataset path')
     parser.add_argument('--hdf_dir', type=str, default="hdf",
@@ -230,3 +248,4 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     main(args)
+    # print(args)

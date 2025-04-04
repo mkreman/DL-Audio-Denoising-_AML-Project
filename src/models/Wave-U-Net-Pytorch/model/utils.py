@@ -6,12 +6,16 @@ def save_model(model, optimizer, state, path):
         model = model.module  # save state dict of wrapped module
     if len(os.path.dirname(path)) > 0 and not os.path.exists(os.path.dirname(path)):
         os.makedirs(os.path.dirname(path))
-    torch.save({
-        'model_state_dict': model.state_dict(),
-        'optimizer_state_dict': optimizer.state_dict(),
-        'state': state,  # state of training loop (was 'step')
-    }, path)
-
+    try:
+        torch.save({
+            'model_state_dict': model.state_dict(),
+            'optimizer_state_dict': optimizer.state_dict(),
+            'state': state,  # state of training loop (was 'step')
+        }, path)
+        print("Model saved to " + path)
+    except Exception as e:
+        print("Error saving model to " + path)
+        raise e
 
 def load_model(model, optimizer, path, cuda):
     if isinstance(model, torch.nn.DataParallel):

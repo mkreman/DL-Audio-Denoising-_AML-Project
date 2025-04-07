@@ -25,6 +25,9 @@ os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
 os.environ['CUDA_DEVICE_ORDER'] = 'PCI_BUS_ID'
 os.environ['LD_LIBRARY_PATH'] = '/usr/local/cuda-11.8/lib64'
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(f"Using device: {device}")
+
 def main(args):
     #torch.backends.cudnn.benchmark=True # This makes dilated conv much faster for CuDNN 7.5
 
@@ -41,13 +44,15 @@ def main(args):
         print("move model to gpu")
         model.cuda()
 
-    print('model: ', model)
+    # print('model: ', model)
     print('parameter count: ', str(sum(p.numel() for p in model.parameters())))
 
     writer = SummaryWriter(args.log_dir)
+    checkpoint_path = os.path.join(args.checkpoint_dir, "checkpoint")
 
     ### DATASET
     if args.dataset == "demand":
+        print("Loading DEMAND dataset")
         ds = load_dataset("JacobLinCool/VoiceBank-DEMAND-16k", use_auth_token=True, cache_dir=args.dataset_dir)
         temp = ds['train'].train_test_split(test_size=0.1, seed=42)
         dataset = {
@@ -141,32 +146,30 @@ def main(args):
         writer.add_scalar("val_loss", val_loss, state["step"])
 
         # EARLY STOPPING CHECK
-        checkpoint_path = os.path.join(args.checkpoint_dir, "checkpoint_" + str(state["step"]))
+        # checkpoint_path = os.path.join(args.checkpoint_dir, "checkpoint_" + str(state["step"]))
         if val_loss >= state["best_loss"]:
             state["worse_epochs"] += 1
         else:
             print("MODEL IMPROVED ON VALIDATION SET!")
             state["worse_epochs"] = 0
             state["best_loss"] = val_loss
-            state["best_checkpoint"] = checkpoint_path
+            # CHECKPOINT
+            model_utils.save_model(model, optimizer, state, checkpoint_path)
 
         state["epochs"] += 1
-        # CHECKPOINT
-        print("Saving model...")
-        model_utils.save_model(model, optimizer, state, checkpoint_path)
-
 
     #### TESTING ####
     # Test loss
     print("TESTING")
 
     # Load best model based on validation loss
-    state = model_utils.load_model(model, None, state["best_checkpoint"], args.cuda)
+    state = model_utils.load_model(model, None, checkpoint_path, args.cuda)
     test_loss = validate(args, model, criterion, test_data)
     print("TEST FINISHED: LOSS: " + str(test_loss))
     writer.add_scalar("test_loss", test_loss, state["step"])
 
     # Mir_eval metrics
+    print("Evaluating on test dataset")
     test_metrics = evaluate(args, dataset["test"], model, args.instruments)
 
     # Dump all metrics results into pickle file for later analysis if needed

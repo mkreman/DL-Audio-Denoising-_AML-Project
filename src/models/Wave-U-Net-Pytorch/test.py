@@ -65,7 +65,7 @@ def predict(audio, model):
             curr_input = audio[:, target_start_pos:target_start_pos + model.shapes["input_frames"]] # Since audio was front-padded input of [targetpos:targetpos+inputframes] actually predicts [targetpos:targetpos+outputframes] target range
 
             # Convert to Pytorch tensor for model prediction
-            curr_input = torch.from_numpy(curr_input).unsqueeze(0)
+            curr_input = torch.from_numpy(curr_input).unsqueeze(0).type(torch.FloatTensor)
 
             # Predict
             for key, curr_targets in compute_model_output(model, curr_input).items():
@@ -80,19 +80,21 @@ def predict(audio, model):
             outputs = outputs.cuda()
     return outputs
 
-def predict_song(args, audio_path, model):
+def predict_song(args, audio_dict, model):
     '''
     Predicts sources for an audio file for which the file path is given, using a given model.
     Takes care of resampling the input audio to the models sampling rate and resampling predictions back to input sampling rate.
     :param args: Options dictionary
-    :param audio_path: Path to mixture audio file
+    :param audio_dict: json of audio file
     :param model: Pytorch model
     :return: Source estimates given as dictionary with keys as source names
     '''
     model.eval()
 
     # Load mixture in original sampling rate
-    mix_audio, mix_sr = data.utils.load(audio_path, sr=None, mono=False)
+    # mix_audio, mix_sr = data.utils.load(audio_dict, sr=None, mono=False)
+    mix_audio, mix_sr = audio_dict['array'], audio_dict['sampling_rate']
+    mix_audio = mix_audio[np.newaxis, :] if len(mix_audio.shape) == 1 else mix_audio
     mix_channels = mix_audio.shape[0]
     mix_len = mix_audio.shape[1]
 
@@ -150,13 +152,14 @@ def evaluate(args, dataset, model, instruments):
     model.eval()
     with torch.no_grad():
         for example in dataset:
-            print("Evaluating " + example["mix"])
+            # print("Evaluating " + example['noisy']["path"])
 
             # Load source references in their original sr and channel number
-            target_sources = np.stack([data.utils.load(example[instrument], sr=None, mono=False)[0].T for instrument in instruments])
+            # target_sources = np.stack([data.utils.load(example[instrument], sr=None, mono=False)[0].T for instrument in instruments])
+            target_sources = np.stack([example[instrument]['array'] for instrument in instruments])
 
             # Predict using mixture
-            pred_sources = predict_song(args, example["mix"], model)
+            pred_sources = predict_song(args, example["noisy"], model)
             pred_sources = np.stack([pred_sources[key].T for key in instruments])
 
             # Evaluate

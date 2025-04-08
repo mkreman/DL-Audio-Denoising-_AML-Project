@@ -22,3 +22,8 @@ rm -rf hdf/*hdf5
 ```
 python -i train.py --instruments "clean" --cuda --dataset "demand" --dataset_dir "/storage/hdd0/data/mayank_dataset" --sr 16000 --channels 1 --separate 0 --patience 10
 ```
+
+### For predicting
+```
+python predict.py --load_model checkpoints/waveunet/checkpoint --instruments "clean" --cuda --sr 16000 --channels 1 --separate 0 --input "./audio_outputs/input_151557.wav"
+```

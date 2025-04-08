@@ -7,6 +7,11 @@ import model.utils as model_utils
 from test import predict_song
 from model.waveunet import Waveunet
 
+# For using GPU at CMI GPU Server
+os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
+os.environ['CUDA_DEVICE_ORDER'] = 'PCI_BUS_ID'
+os.environ['LD_LIBRARY_PATH'] = '/usr/local/cuda-11.8/lib64'
+
 def main(args):
     # MODEL
     num_features = [args.features*i for i in range(1, args.levels+1)] if args.feature_growth == "add" else \
@@ -25,7 +30,12 @@ def main(args):
     state = model_utils.load_model(model, None, args.load_model, args.cuda)
     print('Step', state['step'])
 
-    preds = predict_song(args, args.input, model)
+    array, sampling_rate = data.utils.load(args.input, sr=args.sr, mono=args.channels==1)
+    input_dict = {
+        'array': array, 
+        'sampling_rate': sampling_rate
+    }
+    preds = predict_song(args, input_dict, model)
 
     output_folder = os.path.dirname(args.input) if args.output is None else args.output
     for inst in preds.keys():

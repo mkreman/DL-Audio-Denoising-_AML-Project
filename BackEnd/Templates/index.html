@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Noise Assassins - Audio Denoiser</title>
+  <style>
+    :root {
+      --primary: #3a86ff;
+      --secondary: #8338ec;
+      --dark: #023047;
+      --light: #f8f9fa;
+      --success: #38b000;
+      --error: #d90429;
+      --warning: #ffaa00;
+    }
+    
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    
+    body {
+      background-color: var(--light);
+      color: var(--dark);
+      min-height: 100vh;
+      padding: 2rem 1rem;
+    }
+    
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 2rem;
+      background-color: white;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    }
+    
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      margin-bottom: 2rem;
+      text-align: center;
+    }
+    
+    .logo {
+      margin-bottom: 1rem;
+      font-size: 2.5rem;
+      font-weight: bold;
+      color: var(--secondary);
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      text-shadow: 1px 1px 3px rgba(0,0,0,0.2);
+    }
+    
+    .tagline {
+      color: #666;
+      font-size: 1.2rem;
+      margin-bottom: 1.5rem;
+    }
+    
+    h1 {
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+      color: var(--dark);
+    }
+    
+    .upload-container {
+      background-color: #f1f3f5;
+      border-radius: 8px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+      border: 2px dashed #ccc;
+    }
+    
+    .form-group {
+      margin-bottom: 1.5rem;
+    }
+    
+    .form-label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: bold;
+      color: var(--dark);
+    }
+    
+    .file-input {
+      width: 100%;
+      padding: 0.5rem;
+      background-color: white;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+    
+    .select-model {
+      width: 100%;
+      padding: 0.8rem;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      background-color: white;
+      color: var(--dark);
+      font-size: 1rem;
+    }
+    
+    .submit-btn {
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      color: white;
+      border: none;
+      padding: 0.8rem 2rem;
+      border-radius: 50px;
+      font-size: 1rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: block;
+      margin: 1.5rem auto 0;
+      box-shadow: 0 4px 10px rgba(131, 56, 236, 0.3);
+    }
+    
+    .submit-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 15px rgba(131, 56, 236, 0.4);
+    }
+    
+    .result-section {
+      margin-top: 2rem;
+      display: {% if processed_file %}block{% else %}none{% endif %};
+    }
+    
+    .audio-container {
+      margin: 1rem 0;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    
+    .audio-title {
+      font-weight: bold;
+      color: var(--dark);
+      margin-bottom: 0.5rem;
+    }
+    
+    .audio-player {
+      width: 100%;
+      border-radius: 50px;
+      height: 40px;
+    }
+    
+    .comparison {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+      margin-top: 2rem;
+    }
+    
+    .download-btn {
+      display: inline-block;
+      padding: 0.8rem 1.5rem;
+      background-color: var(--success);
+      color: white;
+      text-decoration: none;
+      border-radius: 50px;
+      font-weight: bold;
+      transition: all 0.3s ease;
+      margin-top: 1rem;
+      text-align: center;
+    }
+    
+    .download-btn:hover {
+      background-color: #2d9700;
+      transform: translateY(-2px);
+    }
+    
+    .message {
+      text-align: center;
+      margin: 1rem 0;
+      padding: 0.8rem;
+      border-radius: 8px;
+    }
+    
+    .message.error {
+      display: {% if error %}block{% else %}none{% endif %};
+      background-color: #ffe3e3;
+      color: var(--error);
+    }
+    
+    .message.warning {
+      display: {% if was_trimmed %}block{% else %}none{% endif %};
+      background-color: #fff3cd;
+      color: var(--warning);
+    }
+    
+    .note {
+      margin-top: 1rem;
+      font-size: 0.9rem;
+      color: #666;
+      text-align: center;
+    }
+    
+    .team-section {
+      margin-top: 3rem;
+      text-align: center;
+      padding-top: 2rem;
+      border-top: 1px solid #ddd;
+    }
+    
+    .team-title {
+      font-size: 1.2rem;
+      color: var(--dark);
+      margin-bottom: 1rem;
+    }
+    
+    .team-members {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+    
+    .team-member {
+      background-color: #f8f9fa;
+      padding: 0.5rem 1rem;
+      border-radius: 50px;
+      font-size: 0.9rem;
+    }
+    
+    @media (max-width: 768px) {
+      .comparison {
+        grid-template-columns: 1fr;
+      }
+      
+      .container {
+        padding: 1.5rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="logo">Noise Assassins</div>
+      <p class="tagline">Professional Audio Denoising Solutions</p>
+      <h1>Audio Denoiser</h1>
+      <p>Upload a noisy audio file and get a clean, noise-free version instantly</p>
+    </header>
+    
+    <div class="message error">{{ error }}</div>
+    
+    <div class="message warning">
+      Your audio was longer than 10 seconds and has been trimmed to the first 10 seconds for processing.
+    </div>
+    
+    <div class="upload-container">
+      <form action="/denoise" method="POST" enctype="multipart/form-data">
+        <div class="form-group">
+          <label for="file" class="form-label">Select an audio file:</label>
+          <input type="file" id="file" name="file" accept="audio/*" class="file-input" required>
+          <div class="note">Note: Files longer than 10 seconds will be automatically trimmed to the first 10 seconds.</div>
+        </div>
+        
+        <div class="form-group">
+          <label for="model" class="form-label">Select denoising model:</label>
+          <select name="model" id="model" class="select-model">
+            {% for model_id, model_info in models.items() %}
+            <option value="{{ model_id }}">{{ model_info.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        
+        <button type="submit" class="submit-btn">Upload &amp; Denoise</button>
+      </form>
+    </div>
+    
+    <div class="result-section" id="result-section">
+      <h2>Denoising Complete!</h2>
+      
+      <div class="comparison">
+        {% if original_file %}
+        <div class="audio-container">
+          <div class="audio-title">Original Audio</div>
+          <audio src="/audio/{{ original_file }}?original=true" class="audio-player" controls></audio>
+        </div>
+        {% endif %}
+        
+        {% if processed_file %}
+        <div class="audio-container">
+          <div class="audio-title">Cleaned Audio</div>
+          <audio src="/audio/{{ processed_file }}" class="audio-player" controls></audio>
+        </div>
+        {% endif %}
+      </div>
+      
+      {% if processed_file %}
+      <div style="text-align: center; margin-top: 2rem;">
+        <a href="/download/{{ processed_file }}" class="download-btn">
+          Download Cleaned Audio
+        </a>
+      </div>
+      {% endif %}
+    </div>
+    
+    <div class="team-section">
+      <div class="team-title">Noise Assassins Team</div>
+      <div class="team-members">
+        <div class="team-member">Aalekhya Mukhopadhyay</div>
+        <div class="team-member">Ayush Yadav</div>
+        <div class="team-member">Kalyani Gohokar</div>
+        <div class="team-member">Mayank Nagar</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

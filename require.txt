@@ -1,0 +1,21 @@
+python==3.9
+pip
+numpy
+librosa
+h5py
+tqdm
+pip:
+torch            # latest version supported on ARM (usually 2.x+)
+torchvision
+musdb
+museval
+future
+soundfile
+tensorboard
+sortedcontainers
+streamlit        # for web interface
+numpy==1.26.4
+datasets
+torchaudio
+resampy
+flask

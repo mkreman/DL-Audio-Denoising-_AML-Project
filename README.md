@@ -12,8 +12,12 @@ Audio-Denoising-Project/
 ├── notebooks/
 ├── src/
 │   ├── models/
-├── results/
-├── README.md
+│   │   └── Wave-U-Net/
+│   │       └── train.py
+│   └── output/
+│        └── Wave-U-Net-outputs/
+└── README.md
+
 ```
 
 ### Webapp at: https://denoising-audio.streamlit.app/

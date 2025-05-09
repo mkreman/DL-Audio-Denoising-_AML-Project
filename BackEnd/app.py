@@ -5,12 +5,23 @@ import tempfile
 from flask import Flask, render_template, request, send_file, redirect, url_for
 from werkzeug.utils import secure_filename
 from argparse import Namespace
-
-# Path to predict.py
+import gdown
+#https://drive.google.com/file/d/1yqU7jYETAqlJNAYvfbY6o6xmWCwYtQKc/view?usp=sharing
+#1yqU7jYETAqlJNAYvfbY6o6xmWCwYtQKc
+# Step 1: Build correct path to predict.py
 PREDICT_DIR = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), '..', 'DL-Audio-Denoising-_AML-Project-Wave-U-Ner-V1', 'src', 'models', 'Wave-U-Net-Pytorch')
+    os.path.join(os.path.dirname(__file__), '..', 'src', 'models', 'Wave-U-Net-Pytorch')
 )
+
+# Step 2: Add to system path
 sys.path.append(PREDICT_DIR)
+# print("Added PREDICT_DIR to sys.path:", PREDICT_DIR)
+
+# # Optional: Check if the directory exists and list contents
+# if os.path.exists(PREDICT_DIR):
+#     print("Directory contents:", os.listdir(PREDICT_DIR))
+# else:
+#     print("❌ Path does not exist:", PREDICT_DIR)
 
 # Import the main function from predict.py
 from predict import main
@@ -29,6 +40,7 @@ app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB max upload
 # Ensure folders exist
 os.makedirs(INPUT_FOLDER, exist_ok=True)
 os.makedirs(OUTPUT_FOLDER, exist_ok=True)
+
 
 # Available models
 MODELS = {
@@ -147,6 +159,28 @@ def denoise():
     try:
         # Setup args for predict.main based on selected model
         checkpoint_path = MODELS[model_id]['checkpoint']
+
+        # Google Drive file ID
+        file_id = "1yqU7jYETAqlJNAYvfbY6o6xmWCwYtQKc"  # ← replace with your actual ID
+        url = f"https://drive.google.com/uc?id={file_id}"
+        
+        # Download only if not already present
+        if not os.path.exists(checkpoint_path):
+            os.makedirs(os.path.dirname(checkpoint_path), exist_ok=True)
+            print("📥 Downloading checkpoint...")
+            gdown.download(url, checkpoint_path, quiet=False)
+
+        # # Add this block to auto-download from a release or public URL
+        # if not os.path.exists(checkpoint_path):
+        #     print("Checkpoint not found. Downloading...")
+        #     import requests
+        #     os.makedirs(os.path.dirname(checkpoint_path), exist_ok=True)
+        #     url = "https://github.com/Kvgohokar/DL-Audio-Denoising-_AML-Project/releases/download/WaveUNet/checkpoint"  # <-- your actual URL
+        #     r = requests.get(url)
+        #     with open(checkpoint_path, 'wb') as f:
+        #         f.write(r.content)
+        #     print("Download complete.")
+            
         args = Namespace(
             instruments=['clean'],
             cuda=False,
@@ -213,7 +247,7 @@ def download_file(filename):
         as_attachment=True,
         download_name='cleaned_audio.wav'
     )
-
-if __name__ == '__main__':
-    # For local development
-    app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 8080)))
+    
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 10000))
+    app.run(debug=False, host="0.0.0.0", port=port)

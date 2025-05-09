@@ -12,7 +12,6 @@ Audio-Denoising-Project/
 ├── notebooks/
 ├── src/
 │   ├── models/
-│   ├── utils/
 ├── results/
 ├── README.md
 ```
